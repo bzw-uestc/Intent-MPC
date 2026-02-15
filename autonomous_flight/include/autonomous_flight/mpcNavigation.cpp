@@ -13,7 +13,16 @@ namespace AutoFlight{
 	}
 
 	void mpcNavigation::initParam(){
-    	// parameters    
+    	// parameters
+		// planning only mode: run planner without sending control commands
+		if (not this->nh_.getParam("autonomous_flight/planning_only", this->planning_only_)){
+			this->planning_only_ = false;
+			cout << "[AutoFlight]: No planning_only param found. Use default: false." << endl;
+		}
+		else{
+			cout << "[AutoFlight]: Planning only mode is set to: " << this->planning_only_ << " (drone will not move when true)." << endl;
+		}
+
     	// use simulation detector	
 		if (not this->nh_.getParam("autonomous_flight/use_fake_detector", this->useFakeDetector_)){
 			this->useFakeDetector_ = false;
@@ -325,7 +334,7 @@ namespace AutoFlight{
 						this->trajStartTime_ = trajStartTime;
 						if (this->mpcHasCollision() or this->hasDynamicCollision()){
 							this->mpcTrajectoryReady_ = false;
-							this->stop();
+							if (not this->planning_only_) this->stop();
 						}
 						else{
 							this->mpc_->getTrajectory(mpcTraj);
@@ -337,7 +346,7 @@ namespace AutoFlight{
 					else if (not this->mpcFirstTime_){
 						if (this->mpcHasCollision() or this->hasDynamicCollision()){
 							this->mpcTrajectoryReady_ = false;
-							this->stop();
+							if (not this->planning_only_) this->stop();
 						}
 						else{
 							this->mpcTrajectoryReady_ = true;
@@ -345,7 +354,7 @@ namespace AutoFlight{
 					}
 					else{
 						this->mpcTrajectoryReady_ = false;
-						this->stop();	
+						if (not this->planning_only_) this->stop();	
 					}
 				}
 			}
@@ -380,10 +389,14 @@ namespace AutoFlight{
 			}
 			else{
 				this->refTrajReady_ = false;
-				if (not this->noYawTurning_ ){
+				if (not this->planning_only_ and not this->noYawTurning_ ){
 					double yaw = atan2(this->goal_.pose.position.y - this->odom_.pose.pose.position.y, this->goal_.pose.position.x - this->odom_.pose.pose.position.x);
 					this->facingYaw_ = yaw;
 					this->moveToOrientation(yaw, this->desiredAngularVel_);
+				}
+				else if (not this->noYawTurning_){
+					double yaw = atan2(this->goal_.pose.position.y - this->odom_.pose.pose.position.y, this->goal_.pose.position.x - this->odom_.pose.pose.position.x);
+					this->facingYaw_ = yaw;
 				}
 				this->firstTimeSave_ = true;
 				this->mpcReplan_ = true;
@@ -400,7 +413,7 @@ namespace AutoFlight{
 			if (this->usePredefinedGoal_){
 				ros::Time currTime = ros::Time::now();
 				if (this->mpcHasCollision() or this->hasDynamicCollision()){ 
-					this->stop();
+					if (not this->planning_only_) this->stop();
 					this->mpcTrajectoryReady_ = false;
 					this->mpcReplan_ = true;
 					cout << "[AutoFlight]: Collision detected. MPC replan." << endl;
@@ -416,7 +429,7 @@ namespace AutoFlight{
 							r.sleep();
 						}
 						this->mpcTrajectoryReady_ = false;
-						this->stop();
+						if (not this->planning_only_) this->stop();
 						this->predefinedGoal_.poses.clear();
 						this->refTrajReady_ = false;
 						cout << "[AutoFlight]: Goal reached. MPC Stop replan." << endl;
@@ -451,14 +464,14 @@ namespace AutoFlight{
 						r.sleep();
 					}
 					this->mpcTrajectoryReady_ = false;
-					this->stop();
+					if (not this->planning_only_) this->stop();
 					this->refTrajReady_ = false;
 					this->mpcFirstTime_ = true;
 					cout<<"[AutoFlight]: Invalid goal. Stop!" << endl;
 					return;
 				}
 				else if (this->mpcHasCollision() or this->hasDynamicCollision()){ 
-					this->stop();
+					if (not this->planning_only_) this->stop();
 					this->mpcTrajectoryReady_ = false;
 					this->mpcReplan_ = true;
 					cout << "[AutoFlight]: Collision detected. MPC replan." << endl;
@@ -471,7 +484,7 @@ namespace AutoFlight{
 					while(ros::ok() and this->replanning_){
 						r.sleep();
 					}
-					this->stop();
+					if (not this->planning_only_) this->stop();
 					this->refTrajReady_ = false;
 					this->mpcTrajectoryReady_ = false;
 					this->mpcFirstTime_ = true;
@@ -483,6 +496,10 @@ namespace AutoFlight{
 	}
 
 	void mpcNavigation::trajExeCB(const ros::TimerEvent&){
+		// planning_only: skip trajectory execution, do not send control commands
+		if (this->planning_only_){
+			return;
+		}
 		bool trajectoryReady;
 		trajectoryReady = this->mpcTrajectoryReady_;
 		if (trajectoryReady){
@@ -588,8 +605,13 @@ namespace AutoFlight{
 	}
 
 	void mpcNavigation::run(){
-		// take off the drone
-		this->takeoff();
+		// take off the drone (skip when planning_only mode)
+		if (not this->planning_only_){
+			this->takeoff();
+		}
+		else{
+			cout << "[AutoFlight]: Planning only mode - skipping takeoff, drone will stay still." << endl;
+		}
 
 		// register timer callback
 		this->registerCallback();

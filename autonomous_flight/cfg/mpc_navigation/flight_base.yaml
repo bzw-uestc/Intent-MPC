@@ -1,8 +1,11 @@
 simulation: true
 use_fake_detector: true
+
+# 仅规划模式：为 true 时只运行规划算法，不发送控制指令，无人机保持不动
+planning_only: true
 use_predictor: true
 takeoff_height: 1.0 # m
-use_global_planner: false
+use_global_planner: true
 no_yaw_turning: false
 use_yaw_control: true
 desired_velocity: 1.5 # m/s
@@ -10,7 +13,7 @@ desired_acceleration: 1.5 # m/s^2
 desired_angular_velocity: 0.5 # rad/s
 
 # MPC target parameters
-use_predefined_goal: true
+use_predefined_goal: false
 predefined_goal_directory: "/cfg/mpc_navigation/ref_trajectory.txt"
 execute_path_times: 10 # how many times to repeat the trajectory 
 

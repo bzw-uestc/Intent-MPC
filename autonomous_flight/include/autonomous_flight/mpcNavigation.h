@@ -45,6 +45,7 @@ namespace AutoFlight{
 		std::thread mpcWorker_;
 
 		// parameters
+		bool planning_only_;  // 仅规划不控制，无人机保持不动
 		bool useFakeDetector_;
 		bool usePredictor_;
 		bool useGlobalPlanner_;
