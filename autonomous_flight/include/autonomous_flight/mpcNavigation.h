@@ -12,7 +12,7 @@
 #include <map_manager/dynamicMap.h>
 #include <onboard_detector/fakeDetector.h>
 #include <dynamic_predictor/dynamicPredictor.h>
-#include <global_planner/rrtOccMap.h>
+#include <global_planner/astarOccMap.h>
 #include <trajectory_planner/polyTrajOccMap.h>
 #include <trajectory_planner/piecewiseLinearTraj.h>
 #include <trajectory_planner/bsplineTraj.h>
@@ -25,7 +25,7 @@ namespace AutoFlight{
 		std::shared_ptr<mapManager::dynamicMap> map_;
 		std::shared_ptr<onboardDetector::fakeDetector> detector_;
 		std::shared_ptr<dynamicPredictor::predictor> predictor_;
-		std::shared_ptr<globalPlanner::rrtOccMap<3>> rrtPlanner_;
+		std::shared_ptr<globalPlanner::astarOccMap> astarPlanner_;
 		std::shared_ptr<trajPlanner::polyTrajOccMap> polyTraj_;
 		std::shared_ptr<trajPlanner::pwlTraj> pwlTraj_;
 		std::shared_ptr<trajPlanner::mpcPlanner> mpc_;

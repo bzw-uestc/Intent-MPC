@@ -153,9 +153,9 @@ namespace AutoFlight{
 			}
 		}
 
-		// initialize rrt planner
-		this->rrtPlanner_.reset(new globalPlanner::rrtOccMap<3> (this->nh_));
-		this->rrtPlanner_->setMap(this->map_);
+		// initialize A* global planner (replaced RRT)
+		this->astarPlanner_.reset(new globalPlanner::astarOccMap(this->nh_));
+		this->astarPlanner_->setMap(this->map_);
 
 		// initialize polynomial trajectory planner
 		this->polyTraj_.reset(new trajPlanner::polyTrajOccMap (this->nh_));
@@ -245,10 +245,21 @@ namespace AutoFlight{
 					}
 					else{
 						if (this->useGlobalPlanner_){
-							this->rrtPlanner_->updateStart(this->odom_.pose.pose);
-							this->rrtPlanner_->updateGoal(this->goal_.pose);
+							this->astarPlanner_->updateStart(this->odom_.pose.pose);
+							this->astarPlanner_->updateGoal(this->goal_.pose);
+							// Update dynamic obstacles for risk-aware A*
+							std::vector<Eigen::Vector3d> obstaclesPos, obstaclesVel, obstaclesSize;
+							if (this->useFakeDetector_){
+								Eigen::Vector3d robotSize;
+								this->map_->getRobotSize(robotSize);
+								this->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize, robotSize);
+							}
+							else{
+								this->map_->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+							}
+							this->astarPlanner_->updateDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
 							nav_msgs::Path rrtPathMsgTemp;
-							this->rrtPlanner_->makePlan(rrtPathMsgTemp);
+							this->astarPlanner_->makePlan(rrtPathMsgTemp);
 							if (rrtPathMsgTemp.poses.size() >= 2){
 								this->rrtPathMsg_ = rrtPathMsgTemp;
 							}

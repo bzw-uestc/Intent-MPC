@@ -1,5 +1,20 @@
 rrt/map_resolution: 0.1
-rrt/timeout: 0.1
+rrt/timeout: 0.5
+
+# A* specific timeout (risk computation is expensive, needs longer than RRT)
+astar/timeout: 0.5
+
+# Risk-aware A* parameters (paper: Risk-Aware Planner for Quadrotor in Cluttered and Dynamic Environments)
+# Lower values = shorter paths; higher = more conservative (may cause large detours)
+astar/risk_aware: true
+astar/dual_path_search: false   # true: search both risk-aware and risk-free paths, publish to astar/risk_aware_path and astar/risk_free_path for visualization
+astar/risk_danger_zone: 0.5        # ds: smaller = risk zone closer to obstacles
+astar/risk_gamma_static: 0.3       # gamma_s: reduce to avoid over-detour
+astar/risk_gamma_dynamic: 0.5      # gamma_d: reduce to avoid over-detour
+astar/risk_eta: 0.1                # eta: key param - lower = prioritize path length over risk
+astar/risk_weight: 0.2             # weight in g(n) - lower = less penalty for passing near risk
+astar/risk_pred_horizon: 1.5       # prediction horizon (s)
+astar/risk_pred_steps: 4           # prediction steps
 rrt/env_box: [-100, 100, -100, 100, 1.0, 1.0]
 rrt/incremental_distance: 0.5
 rrt/goal_reach_distance: 0.4

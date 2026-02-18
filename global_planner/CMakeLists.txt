@@ -13,6 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  nav_msgs
+  geometry_msgs
+  visualization_msgs
   octomap_ros
   map_manager
 )
@@ -131,7 +134,8 @@ include_directories(
 # )
 add_library(${PROJECT_NAME} src/globalPlannerLib.cpp
                             include/${PROJECT_NAME}/PRMKDTree.cpp
-                            include/${PROJECT_NAME}/dep.cpp)
+                            include/${PROJECT_NAME}/dep.cpp
+                            include/${PROJECT_NAME}/astarOccMap.cpp)
 
 
 ## Add cmake target dependencies of the library
