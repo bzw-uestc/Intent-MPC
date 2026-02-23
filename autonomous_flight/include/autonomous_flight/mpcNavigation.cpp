@@ -247,17 +247,39 @@ namespace AutoFlight{
 						if (this->useGlobalPlanner_){
 							this->astarPlanner_->updateStart(this->odom_.pose.pose);
 							this->astarPlanner_->updateGoal(this->goal_.pose);
-							// Update dynamic obstacles for risk-aware A*
-							std::vector<Eigen::Vector3d> obstaclesPos, obstaclesVel, obstaclesSize;
-							if (this->useFakeDetector_){
-								Eigen::Vector3d robotSize;
-								this->map_->getRobotSize(robotSize);
-								this->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize, robotSize);
+							// Update dynamic obstacles for risk-aware A* (intent-based when predictor available)
+							if (this->usePredictor_){
+								std::vector<std::vector<std::vector<Eigen::Vector3d>>> predPos, predSize;
+								std::vector<Eigen::VectorXd> intentProb;
+								this->predictor_->getPrediction(predPos, predSize, intentProb);
+								if (not predPos.empty() and not intentProb.empty()){
+									this->astarPlanner_->updateDynamicObstaclesIntent(predPos, predSize, intentProb);
+								}
+								else{
+									std::vector<Eigen::Vector3d> obstaclesPos, obstaclesVel, obstaclesSize;
+									if (this->useFakeDetector_){
+										Eigen::Vector3d robotSize;
+										this->map_->getRobotSize(robotSize);
+										this->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize, robotSize);
+									}
+									else{
+										this->map_->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+									}
+									this->astarPlanner_->updateDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+								}
 							}
 							else{
-								this->map_->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+								std::vector<Eigen::Vector3d> obstaclesPos, obstaclesVel, obstaclesSize;
+								if (this->useFakeDetector_){
+									Eigen::Vector3d robotSize;
+									this->map_->getRobotSize(robotSize);
+									this->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize, robotSize);
+								}
+								else{
+									this->map_->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+								}
+								this->astarPlanner_->updateDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
 							}
-							this->astarPlanner_->updateDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
 							nav_msgs::Path rrtPathMsgTemp;
 							this->astarPlanner_->makePlan(rrtPathMsgTemp);
 							if (rrtPathMsgTemp.poses.size() >= 2){

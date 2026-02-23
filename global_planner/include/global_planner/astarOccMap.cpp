@@ -95,12 +95,46 @@ void astarOccMap::initParam(){
 	else{
 		cout << "[AStarPlanner]: Dual path search: " << this->dualPathSearch_ << " (publish both for visualization)." << endl;
 	}
+
+	if (not this->nh_.getParam("astar/risk_map_vis", this->riskMapVis_)){
+		this->riskMapVis_ = false;
+	}
+	else{
+		cout << "[AStarPlanner]: Risk map visualization: " << this->riskMapVis_ << "." << endl;
+	}
+	if (not this->nh_.getParam("astar/risk_map_res", this->riskMapRes_)){
+		this->riskMapRes_ = 0.2;
+	}
+	if (not this->nh_.getParam("astar/risk_map_range", this->riskMapRange_)){
+		this->riskMapRange_ = 5.0;
+	}
+	if (not this->nh_.getParam("astar/risk_map_height", this->riskMapHeight_)){
+		this->riskMapHeight_ = 1.0;
+	}
+	if (not this->nh_.getParam("astar/risk_map_min_risk", this->riskMapMinRisk_)){
+		this->riskMapMinRisk_ = 0.05;
+	}
+	// Intent-based risk params (paper: 基于多模态意图的风险地图构建)
+	if (not this->nh_.getParam("astar/risk_lambda", this->riskLambda_)){
+		this->riskLambda_ = 2.0;
+	}
+	if (not this->nh_.getParam("astar/risk_beta", this->riskBeta_)){
+		this->riskBeta_ = 1.0;
+	}
+	if (not this->nh_.getParam("astar/risk_gamma_time", this->riskGammaTime_)){
+		this->riskGammaTime_ = 0.9;
+	}
+	if (not this->nh_.getParam("astar/risk_elongation", this->riskElongation_)){
+		this->riskElongation_ = 2.5;
+	}
+	this->useIntentRisk_ = false;
 }
 
 void astarOccMap::registerPub(){
 	this->astarVisPub_ = this->nh_.advertise<visualization_msgs::MarkerArray>("astar/planned_path", 100);
 	this->astarRiskAwarePathPub_ = this->nh_.advertise<nav_msgs::Path>("astar/risk_aware_path", 10);
 	this->astarRiskFreePathPub_ = this->nh_.advertise<nav_msgs::Path>("astar/risk_free_path", 10);
+	this->riskMapPub_ = this->nh_.advertise<sensor_msgs::PointCloud2>("astar/risk_map", 1);
 }
 
 void astarOccMap::registerCallback(){
@@ -136,6 +170,17 @@ void astarOccMap::updateDynamicObstacles(const std::vector<Eigen::Vector3d>& obs
 	this->dynObstaclesPos_ = obstaclesPos;
 	this->dynObstaclesVel_ = obstaclesVel;
 	this->dynObstaclesSize_ = obstaclesSize;
+	this->useIntentRisk_ = false;
+}
+
+void astarOccMap::updateDynamicObstaclesIntent(
+	const std::vector<std::vector<std::vector<Eigen::Vector3d>>>& predPos,
+	const std::vector<std::vector<std::vector<Eigen::Vector3d>>>& predSize,
+	const std::vector<Eigen::VectorXd>& intentProb){
+	this->dynIntentPredPos_ = predPos;
+	this->dynIntentPredSize_ = predSize;
+	this->dynIntentProb_ = intentProb;
+	this->useIntentRisk_ = (not predPos.empty() and not intentProb.empty());
 }
 
 double astarOccMap::getStaticRisk(const Eigen::Vector3d& q) const{
@@ -170,8 +215,84 @@ double astarOccMap::getStaticRisk(const Eigen::Vector3d& q) const{
 }
 
 double astarOccMap::getDynamicRisk(const Eigen::Vector3d& q) const{
-	// Rd(q): Gaussian-based risk from predicted dynamic obstacle positions (simplified Eq.6-7)
-	// rd(q,t) = exp(-||q - pred_pos||^2 / (2*sigma^2)), aggregated over time
+	if (this->useIntentRisk_ and not this->dynIntentPredPos_.empty()){
+		return this->getDynamicRiskIntent(q);
+	}
+	return this->getDynamicRiskVelocity(q);
+}
+
+double astarOccMap::getDynamicRiskIntent(const Eigen::Vector3d& q) const{
+	// Rd(q) = Σ_i Σ_I P^i(I) Σ_k ω_k r_{i,I}(q,k)
+	// 使用运动方向对齐的各向异性核：s_along >> s_perp，使风险在目标运动方向显著拉长
+	if (this->dynIntentPredPos_.empty()){
+		return 0.0;
+	}
+	Eigen::Vector2d piQ(q(0), q(1));
+	double totalRisk = 0.0;
+
+	for (size_t i = 0; i < this->dynIntentPredPos_.size(); ++i){
+		if (i >= this->dynIntentProb_.size()) break;
+		const auto& posPred = this->dynIntentPredPos_[i];
+		const auto& sizePred = this->dynIntentPredSize_[i];
+		const Eigen::VectorXd& P = this->dynIntentProb_[i];
+		if (P.size() < 4) continue;
+
+		for (int I = 0; I < 4 and I < int(posPred.size()); ++I){
+			double pI = P(I);
+			if (pI < 1e-6) continue;
+
+			const auto& trajPos = posPred[I];
+			const auto& trajSize = sizePred[I];
+			int Npred = std::min(int(trajPos.size()), int(trajSize.size()));
+
+			for (int k = 0; k < Npred; ++k){
+				Eigen::Vector2d mu(trajPos[k](0), trajPos[k](1));
+				double sx = std::max(trajSize[k](0) * 0.5, 0.1);
+				double sy = std::max(trajSize[k](1) * 0.5, 0.1);
+
+				Eigen::Vector2d motionDir(0, 0);
+				if (k > 0){
+					motionDir(0) = trajPos[k](0) - trajPos[0](0);
+					motionDir(1) = trajPos[k](1) - trajPos[0](1);
+				}
+				else if (k + 1 < Npred){
+					motionDir(0) = trajPos[k+1](0) - trajPos[k](0);
+					motionDir(1) = trajPos[k+1](1) - trajPos[k](1);
+				}
+				double motionNorm = motionDir.norm();
+
+				double sAlong, sPerp;
+				if (motionNorm > 1e-4){
+					motionDir /= motionNorm;
+					sAlong = std::max(sx, sy) * this->riskElongation_;
+					sPerp = std::min(sx, sy);
+					Eigen::Vector2d d(piQ(0) - mu(0), piQ(1) - mu(1));
+					double dAlong = d.dot(motionDir);
+					double dPerp = (d - dAlong * motionDir).norm();
+					// 运动方向不对称：沿运动方向(右)用s_along拉长，反方向(左)用s_perp与前后一致
+					double sEffAlong = (dAlong >= 0) ? sAlong : sPerp;
+					double quad = (dAlong / sEffAlong) * (dAlong / sEffAlong) + (dPerp / sPerp) * (dPerp / sPerp);
+					double omegaK = std::pow(this->riskGammaTime_, k);
+					double r = std::exp(-std::pow(quad, this->riskBeta_));
+					totalRisk += pI * omegaK * r;
+				}
+				else{
+					double s = std::max(sx, sy);
+					double dx = (piQ(0) - mu(0)) / s;
+					double dy = (piQ(1) - mu(1)) / s;
+					double quad = dx * dx + dy * dy;
+					double omegaK = std::pow(this->riskGammaTime_, k);
+					double r = std::exp(-std::pow(quad, this->riskBeta_));
+					totalRisk += pI * omegaK * r;
+				}
+			}
+		}
+	}
+	return this->riskGammaDynamic_ * totalRisk;
+}
+
+double astarOccMap::getDynamicRiskVelocity(const Eigen::Vector3d& q) const{
+	// Fallback: velocity-based anisotropic Gaussian when no intent data
 	if (this->dynObstaclesPos_.empty()) return 0.0;
 
 	double dt = (this->riskPredSteps_ > 1) ? (this->riskPredHorizon_ / (this->riskPredSteps_ - 1)) : 0.0;
@@ -183,14 +304,35 @@ double astarOccMap::getDynamicRisk(const Eigen::Vector3d& q) const{
 		Eigen::Vector3d size = this->dynObstaclesSize_[i];
 		double baseSigma = std::max({size(0), size(1), size(2)}) * 0.5;
 		double velNorm = vel.norm();
-		double velSigma = std::max(0.3, velNorm * this->riskPredHorizon_ * 0.5);
+
+		Eigen::Vector3d velDir = Eigen::Vector3d::Zero();
+		if (velNorm > 1e-4){
+			velDir = vel / velNorm;
+		}
 
 		for (int t = 0; t < this->riskPredSteps_; ++t){
 			Eigen::Vector3d predPos = pos + vel * (t * dt);
-			double sigma = baseSigma + velSigma * (1.0 + t * 0.2);
-			double distSq = (q - predPos).squaredNorm();
+			Eigen::Vector3d d = q - predPos;
+
+			double sigmaAlong = (baseSigma + velNorm * this->riskPredHorizon_ * (0.8 + 0.4 * t / this->riskPredSteps_)) * this->riskElongation_;
+			double sigmaPerp = baseSigma + 0.2;
+
+			double distSqEff;
+			if (velNorm > 1e-4){
+				double dAlong = d.dot(velDir);
+				Eigen::Vector3d dPerpVec = d - dAlong * velDir;
+				double dPerp = dPerpVec.norm();
+				// 运动方向不对称：沿速度方向用sigmaAlong，反方向用sigmaPerp
+				double sigmaEffAlong = (dAlong >= 0) ? sigmaAlong : sigmaPerp;
+				distSqEff = (dAlong * dAlong) / (sigmaEffAlong * sigmaEffAlong) + (dPerp * dPerp) / (sigmaPerp * sigmaPerp);
+			}
+			else{
+				double sigma = baseSigma + 0.3;
+				distSqEff = d.squaredNorm() / (sigma * sigma);
+			}
+
 			double w = 1.0 / (1.0 + t * 0.3);
-			totalRisk += w * std::exp(-distSq / (2.0 * sigma * sigma));
+			totalRisk += w * std::exp(-distSqEff / 2.0);
 		}
 	}
 	return this->riskGammaDynamic_ * totalRisk;
@@ -434,8 +576,65 @@ void astarOccMap::makePlan(nav_msgs::Path& path){
 	}
 }
 
+void astarOccMap::publishRiskMap(){
+	if (not this->riskMapVis_ or not this->map_ or not this->riskAware_) return;
+	if (this->currPlan_.size() < 2) return;
+
+	Eigen::Vector3d center = (this->start_ + this->goal_) * 0.5;
+	double r = this->riskMapRange_;
+	double z = this->riskMapHeight_;
+
+	pcl::PointCloud<pcl::PointXYZRGB> cloud;
+	double riskMax = 2.0;
+
+	for (double x = center(0) - r; x <= center(0) + r; x += this->riskMapRes_){
+		for (double y = center(1) - r; y <= center(1) + r; y += this->riskMapRes_){
+			Eigen::Vector3d q(x, y, z);
+			if (this->map_->isInflatedOccupied(q)) continue;
+			if (not this->map_->isInMap(q)) continue;
+
+			double risk = this->getStaticRisk(q) + this->getDynamicRisk(q);
+			if (risk < this->riskMapMinRisk_) continue;
+
+			pcl::PointXYZRGB pt;
+			pt.x = x; pt.y = y; pt.z = z;
+			double t = std::min(1.0, risk / riskMax);
+			if (t < 0.33){
+				pt.r = 0;
+				pt.g = (uint8_t)(255 * t / 0.33);
+				pt.b = 255;
+			}
+			else if (t < 0.66){
+				pt.r = (uint8_t)(255 * (t - 0.33) / 0.33);
+				pt.g = 255;
+				pt.b = (uint8_t)(255 * (1.0 - (t - 0.33) / 0.33));
+			}
+			else{
+				pt.r = 255;
+				pt.g = (uint8_t)(255 * (1.0 - (t - 0.66) / 0.34));
+				pt.b = 0;
+			}
+			cloud.points.push_back(pt);
+		}
+	}
+
+	if (cloud.points.empty()) return;
+
+	cloud.width = cloud.points.size();
+	cloud.height = 1;
+	cloud.is_dense = true;
+	sensor_msgs::PointCloud2 msg;
+	pcl::toROSMsg(cloud, msg);
+	msg.header.frame_id = "map";
+	msg.header.stamp = ros::Time::now();
+	this->riskMapPub_.publish(msg);
+}
+
 void astarOccMap::visCB(const ros::TimerEvent&){
 	this->publishAstarPath();
+	if (this->riskMapVis_){
+		this->publishRiskMap();
+	}
 	if (this->dualPathSearch_){
 		nav_msgs::Path riskAwarePath, riskFreePath;
 		this->pathToNavMsg(this->currPlan_, riskAwarePath);

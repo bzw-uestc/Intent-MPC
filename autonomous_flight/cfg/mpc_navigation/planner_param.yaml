@@ -8,6 +8,11 @@ astar/timeout: 0.5
 # Lower values = shorter paths; higher = more conservative (may cause large detours)
 astar/risk_aware: true
 astar/dual_path_search: false   # true: search both risk-aware and risk-free paths, publish to astar/risk_aware_path and astar/risk_free_path for visualization
+astar/risk_map_vis: true       # true: publish 2D risk map (XY slice) to astar/risk_map for RViz
+astar/risk_map_res: 0.15       # sampling resolution (m)
+astar/risk_map_range: 5.0      # half side of XY region around start-goal center (m)
+astar/risk_map_height: 1.0     # fixed height for 2D slice (m), e.g. typical flight height
+astar/risk_map_min_risk: 0.5  # min risk to display, below = no display (hide zero-cost regions)
 astar/risk_danger_zone: 0.5        # ds: smaller = risk zone closer to obstacles
 astar/risk_gamma_static: 0.3       # gamma_s: reduce to avoid over-detour
 astar/risk_gamma_dynamic: 0.5      # gamma_d: reduce to avoid over-detour
@@ -15,6 +20,11 @@ astar/risk_eta: 0.1                # eta: key param - lower = prioritize path le
 astar/risk_weight: 0.2             # weight in g(n) - lower = less penalty for passing near risk
 astar/risk_pred_horizon: 1.5       # prediction horizon (s)
 astar/risk_pred_steps: 4           # prediction steps
+# Intent-based risk (paper: 基于多模态意图的风险地图构建)
+astar/risk_lambda: 2.0             # λ: confidence inflation (~95% with 2)
+astar/risk_beta: 1.0               # β: kernel shape (≥1, larger=steeper edge)
+astar/risk_gamma_time: 0.9         # γ: time decay ω_k=γ^k
+astar/risk_elongation: 2.5         # 运动方向拉长因子，越大风险区越沿运动方向延伸
 rrt/env_box: [-100, 100, -100, 100, 1.0, 1.0]
 rrt/incremental_distance: 0.5
 rrt/goal_reach_distance: 0.4

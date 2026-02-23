@@ -16,10 +16,12 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   geometry_msgs
   visualization_msgs
+  sensor_msgs
   octomap_ros
   map_manager
 )
 find_package(OpenCV REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -126,6 +128,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -170,7 +173,7 @@ add_executable(test_dep_node src/test_dep_node.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES})
 # target_link_libraries(test_kdtree ${catkin_LIBRARIES})
 # target_link_libraries(test_prm_kdtree ${catkin_LIBRARIES} ${PROJECT_NAME} ${OpenCV_LIBS})
 # target_link_libraries(test_blob_detection ${catkin_LIBRARIES})
