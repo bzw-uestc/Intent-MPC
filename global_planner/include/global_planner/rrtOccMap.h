@@ -473,7 +473,12 @@ namespace globalPlanner{
 		line.color.r = 0.5;
 		line.color.g = 0.1;
 		line.color.b = 1;
-		pathVisVec.push_back(line);		
+		pathVisVec.push_back(line);
+		if (this->currPlan_.size() >= 2){
+			visualization_msgs::MarkerArray msg;
+			for (const auto& m : pathVisVec) msg.markers.push_back(m);
+			this->rrtVisPub_.publish(msg);
+		}
 	}
 }
 

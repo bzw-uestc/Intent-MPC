@@ -51,6 +51,15 @@ namespace AutoFlight{
 			cout << "[AutoFlight]: Global planner use is set to: " << this->useGlobalPlanner_ << "." << endl;
 		}
 
+		// RRT path visualization (run RRT alongside A* for comparison)
+		if (not this->nh_.getParam("rrt/vis_path", this->rrtVisPath_)){
+			this->rrtVisPath_ = false;
+			cout << "[AutoFlight]: No rrt/vis_path param found. Use default: false." << endl;
+		}
+		else{
+			cout << "[AutoFlight]: RRT path visualization: " << this->rrtVisPath_ << "." << endl;
+		}
+
 		// No turning of yaw
 		if (not this->nh_.getParam("autonomous_flight/no_yaw_turning", this->noYawTurning_)){
 			this->noYawTurning_ = false;
@@ -157,6 +166,12 @@ namespace AutoFlight{
 		this->astarPlanner_.reset(new globalPlanner::astarOccMap(this->nh_));
 		this->astarPlanner_->setMap(this->map_);
 
+		// initialize RRT planner for visualization (when rrt/vis_path enabled)
+		if (this->useGlobalPlanner_ and this->rrtVisPath_){
+			this->rrtPlanner_.reset(new globalPlanner::rrtOccMap<3>(this->nh_));
+			this->rrtPlanner_->setMap(this->map_);
+		}
+
 		// initialize polynomial trajectory planner
 		this->polyTraj_.reset(new trajPlanner::polyTrajOccMap (this->nh_));
 		this->polyTraj_->setMap(this->map_);
@@ -174,6 +189,7 @@ namespace AutoFlight{
 
 	void mpcNavigation::registerPub(){
 		this->rrtPathPub_ = this->nh_.advertise<nav_msgs::Path>("mpcNavigation/rrt_path", 10);
+		this->rrtPathVisPub_ = this->nh_.advertise<nav_msgs::Path>("mpcNavigation/rrt_path_vis", 10);
 		this->polyTrajPub_ = this->nh_.advertise<nav_msgs::Path>("mpcNavigation/poly_traj", 10);
 		this->pwlTrajPub_ = this->nh_.advertise<nav_msgs::Path>("mpcNavigation/pwl_trajectory", 10);
 		this->mpcTrajPub_ = this->nh_.advertise<nav_msgs::Path>("mpcNavigation/mpc_trajectory", 10);
@@ -284,6 +300,16 @@ namespace AutoFlight{
 							this->astarPlanner_->makePlan(rrtPathMsgTemp);
 							if (rrtPathMsgTemp.poses.size() >= 2){
 								this->rrtPathMsg_ = rrtPathMsgTemp;
+							}
+							// Run RRT for visualization (alongside A*)
+							if (this->rrtPlanner_){
+								this->rrtPlanner_->updateStart(this->odom_.pose.pose);
+								this->rrtPlanner_->updateGoal(this->goal_.pose);
+								nav_msgs::Path rrtPathVisTemp;
+								this->rrtPlanner_->makePlan(rrtPathVisTemp);
+								if (rrtPathVisTemp.poses.size() >= 2){
+									this->rrtPathVisMsg_ = rrtPathVisTemp;
+								}
 							}
 							Eigen::Vector3d startVel (0, 0, 0);
 							Eigen::Vector3d startAcc (0, 0, 0);
@@ -605,6 +631,9 @@ namespace AutoFlight{
 	void mpcNavigation::visCB(const ros::TimerEvent&){
 		if (this->rrtPathMsg_.poses.size() != 0){
 			this->rrtPathPub_.publish(this->rrtPathMsg_);
+		}
+		if (this->rrtPathVisMsg_.poses.size() != 0){
+			this->rrtPathVisPub_.publish(this->rrtPathVisMsg_);
 		}
 		if (this->polyTrajMsg_.poses.size() != 0){
 			this->polyTrajPub_.publish(this->polyTrajMsg_);
