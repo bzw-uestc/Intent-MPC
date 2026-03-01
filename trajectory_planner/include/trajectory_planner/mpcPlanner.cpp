@@ -1430,18 +1430,11 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 				line.scale.x = 0.06;
 				line.lifetime = ros::Duration(0.1);
 				line.id = obIdx;
-				if (obIdx == this->obIdx_){
-					line.color.r = 1;
-					line.color.g = 0;
-					line.color.b = 0;
-					line.color.a = 1.0;
-				}
-				else if (obIdx != this->obIdx_){
-					line.color.r = 0;
-					line.color.g = 0;
-					line.color.b = 1;
-					line.color.a = 1.0;
-				}
+				// 动态障碍物统一显示为蓝色
+				line.color.r = 0;
+				line.color.g = 0;
+				line.color.b = 1;
+				line.color.a = 1.0;
 				
 				double x = this->dynamicObstaclesPos_[i][0](0); 
 				double y = this->dynamicObstaclesPos_[i][0](1); 
