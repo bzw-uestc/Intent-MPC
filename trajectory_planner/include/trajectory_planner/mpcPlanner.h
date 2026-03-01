@@ -94,6 +94,8 @@ namespace trajPlanner{
 
 		double ellipsoidVisAlpha_ = 0.4;   // 椭球线框透明度 0~1，越小越透明
 		double ellipsoidVisScale_ = 0.02;  // 椭球线框粗细 (m)，越小越细
+		double ellipsoidElongationX_ = 1.3;  // 动态障碍物沿x轴长轴拉长（朝x运动），作用到规划
+		double ellipsoidShrinkYZ_ = 0.85;    // 动态障碍物y/z短轴缩短，作用到规划
 
 		// clustering params
 		double cloudRes_;

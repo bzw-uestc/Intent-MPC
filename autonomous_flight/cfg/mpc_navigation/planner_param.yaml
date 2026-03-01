@@ -55,6 +55,8 @@ mpc_planner/static_safety_dist: 1.2
 mpc_planner/dynamic_safety_dist: 1.0
 mpc_planner/ellipsoid_vis_alpha: 0.25  # 椭球线框透明度 0~1，越小越透明
 mpc_planner/ellipsoid_vis_scale: 0.02  # 椭球线框粗细 (m)，越小越细
+mpc_planner/ellipsoid_elongation_x: 1.0   # 动态障碍物沿x轴长轴拉长（朝x匀速运动），作用到规划约束
+mpc_planner/ellipsoid_shrink_yz: 1.0    # 动态障碍物y/z短轴缩短，作用到规划约束
 mpc_planner/static_constraint_slack_ratio: 0.01
 mpc_planner/dynamic_constraint_slack_ratio: 0.2 
 # MPC clustering params

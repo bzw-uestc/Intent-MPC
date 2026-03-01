@@ -3,9 +3,7 @@ Panels:
     Help Height: 138
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /MPC Trajectory1
-        - /Reference Trajectory1
+      Expanded: ~
       Splitter Ratio: 0.6029411554336548
     Tree Height: 964
   - Class: rviz/Selection
@@ -121,13 +119,13 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /tracking_controller/vel_and_acc_info
       Name: Controller Info
       Namespaces:
-        tracking_controller: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: false
       Marker Topic: /onboard_detector/GT_obstacle_bbox
@@ -414,7 +412,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 8.945915222167969
+      Distance: 6.929447650909424
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -422,17 +420,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.6991695165634155
-        Y: -0.4208802580833435
-        Z: 2.0440545082092285
+        X: -0.034488219767808914
+        Y: 0.05983203276991844
+        Z: 1.3199065923690796
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.444797158241272
+      Pitch: 0.47979748249053955
       Target Frame: <Fixed Frame>
-      Yaw: 0.03170494735240936
+      Yaw: 6.079889297485352
     Saved: ~
 Window Geometry:
   Displays:

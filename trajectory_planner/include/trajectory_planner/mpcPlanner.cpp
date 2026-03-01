@@ -140,6 +140,15 @@ namespace trajPlanner{
 		}
 		this->ellipsoidVisScale_ = std::max(0.005, std::min(0.1, this->ellipsoidVisScale_));
 
+		if (not this->nh_.getParam("/mpc_planner/ellipsoid_elongation_x", this->ellipsoidElongationX_)
+		    and not this->nh_.getParam(this->ns_ + "/ellipsoid_elongation_x", this->ellipsoidElongationX_)){
+			this->ellipsoidElongationX_ = 1.3;
+		}
+		if (not this->nh_.getParam("/mpc_planner/ellipsoid_shrink_yz", this->ellipsoidShrinkYZ_)
+		    and not this->nh_.getParam(this->ns_ + "/ellipsoid_shrink_yz", this->ellipsoidShrinkYZ_)){
+			this->ellipsoidShrinkYZ_ = 0.85;
+		}
+
 	}
 
 	void mpcPlanner::initModules(){
@@ -1106,26 +1115,29 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 			yaw[j].resize(numObs,1);
 			isDyamic[j].resize(numObs);
 			for(int i=0; i<numDynamicOb; i++){
+				double baseX, baseY, baseZ;
 				if (j<dynamicObstaclesPos[i].size()){
 					oxyz[j](i,0) = dynamicObstaclesPos[i][j](0);
 					oxyz[j](i,1) = dynamicObstaclesPos[i][j](1);
 					oxyz[j](i,2) = dynamicObstaclesPos[i][j](2);
-					osize[j](i,0) = dynamicObstaclesSize[i][j](0)/2 + this->dynamicSafetyDist_;
-					osize[j](i,1) = dynamicObstaclesSize[i][j](1)/2 + this->dynamicSafetyDist_;
-					osize[j](i,2) = dynamicObstaclesSize[i][j](2)/2 + this->dynamicSafetyDist_;
-					yaw[j](i,0) = 0.0;
-					isDyamic[j][i] = 1;
+					baseX = dynamicObstaclesSize[i][j](0)/2 + this->dynamicSafetyDist_;
+					baseY = dynamicObstaclesSize[i][j](1)/2 + this->dynamicSafetyDist_;
+					baseZ = dynamicObstaclesSize[i][j](2)/2 + this->dynamicSafetyDist_;
 				}
 				else{
 					oxyz[j](i,0) = dynamicObstaclesPos[i].back()(0);
 					oxyz[j](i,1) = dynamicObstaclesPos[i].back()(1);
 					oxyz[j](i,2) = dynamicObstaclesPos[i].back()(2);
-					osize[j](i,0) = dynamicObstaclesSize[i].back()(0)/2 + this->dynamicSafetyDist_;
-					osize[j](i,1) = dynamicObstaclesSize[i].back()(1)/2 + this->dynamicSafetyDist_;
-					osize[j](i,2) = dynamicObstaclesSize[i].back()(2)/2 + this->dynamicSafetyDist_;
-					yaw[j](i,0) = 0.0;
-					isDyamic[j][i] = 1;
+					baseX = dynamicObstaclesSize[i].back()(0)/2 + this->dynamicSafetyDist_;
+					baseY = dynamicObstaclesSize[i].back()(1)/2 + this->dynamicSafetyDist_;
+					baseZ = dynamicObstaclesSize[i].back()(2)/2 + this->dynamicSafetyDist_;
 				}
+				// 动态障碍物朝x轴运动：x方向长轴拉长，y/z短轴缩短，作用到规划约束
+				osize[j](i,0) = baseX * this->ellipsoidElongationX_;
+				osize[j](i,1) = baseY * this->ellipsoidShrinkYZ_;
+				osize[j](i,2) = baseZ * this->ellipsoidShrinkYZ_;
+				yaw[j](i,0) = 0.0;
+				isDyamic[j][i] = 1;
 			}
 			for(int i=0; i<numStaticOb; i++){
 				oxyz[j](i+numDynamicOb,0) = staticObstacles[i].centroid(0);
@@ -1548,7 +1560,7 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 				int rowsYaw = this->mpcEllipsoidYaw_[j].rows();
 				int numObs = std::min({rowsOxyz, rowsOsize, rowsYaw, this->mpcEllipsoidNumObs_, this->mpcEllipsoidNumDynamicObs_});
 				if (numObs <= 0) continue;
-				for (int i = 0; i < numObs; ++i){  // 仅显示动态障碍物椭球，静态不显示
+				for (int i = 0; i < numObs; ++i){  // 仅显示动态障碍物椭球，静态不显示（osize 已在 updateObstacleParam 中缩放）
 					Eigen::Vector3d pos(this->mpcEllipsoidOxyz_[j](i, 0), this->mpcEllipsoidOxyz_[j](i, 1), this->mpcEllipsoidOxyz_[j](i, 2));
 					double a = this->mpcEllipsoidOsize_[j](i, 0);
 					double b = this->mpcEllipsoidOsize_[j](i, 1);
