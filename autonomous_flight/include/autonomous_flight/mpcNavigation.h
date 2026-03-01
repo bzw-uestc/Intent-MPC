@@ -112,6 +112,13 @@ namespace AutoFlight{
 		nav_msgs::Path getRestGlobalPath();
 		void getDynamicObstacles(std::vector<Eigen::Vector3d>& obstaclesPos, std::vector<Eigen::Vector3d>& obstaclesVel, std::vector<Eigen::Vector3d>& obstaclesSize, const Eigen::Vector3d &robotSize = Eigen::Vector3d(0.0, 0.0, 0.0));
 		void publishGoal();
+		// 计算路径到动态障碍物的最近距离 (完成规划时刻的指标)
+		double computePathToObstacleMinDist(const nav_msgs::Path& path,
+			const std::vector<Eigen::Vector3d>& obstaclesPos,
+			const std::vector<Eigen::Vector3d>& obstaclesSize) const;
+		double computePathToObstacleMinDist(const std::vector<Eigen::Vector3d>& path,
+			const std::vector<Eigen::Vector3d>& obstaclesPos,
+			const std::vector<Eigen::Vector3d>& obstaclesSize) const;
 	};
 }
 

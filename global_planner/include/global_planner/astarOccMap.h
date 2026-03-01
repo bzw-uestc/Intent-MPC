@@ -150,6 +150,8 @@ public:
 		const std::vector<std::vector<std::vector<Eigen::Vector3d>>>& predSize,
 		const std::vector<Eigen::VectorXd>& intentProb);
 	void makePlan(nav_msgs::Path& path);
+	const std::vector<Eigen::Vector3d>& getCurrPlan() const { return currPlan_; }
+	const std::vector<Eigen::Vector3d>& getRiskFreePlan() const { return riskFreePlan_; }
 };
 
 }

@@ -4,6 +4,8 @@
 	dynamic navigation implementation file
 */
 #include <autonomous_flight/mpcNavigation.h>
+#include <limits>
+#include <iomanip>
 
 namespace AutoFlight{
 	mpcNavigation::mpcNavigation(const ros::NodeHandle& nh) : flightBase(nh){
@@ -310,6 +312,34 @@ namespace AutoFlight{
 								if (rrtPathVisTemp.poses.size() >= 2){
 									this->rrtPathVisMsg_ = rrtPathVisTemp;
 								}
+							}
+							// 完成规划时刻：计算三条路径到动态障碍物的最近距离
+							std::vector<Eigen::Vector3d> obstaclesPos, obstaclesVel, obstaclesSize;
+							if (this->useFakeDetector_){
+								Eigen::Vector3d robotSize;
+								this->map_->getRobotSize(robotSize);
+								this->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize, robotSize);
+							}
+							else{
+								this->map_->getDynamicObstacles(obstaclesPos, obstaclesVel, obstaclesSize);
+							}
+							if (not obstaclesPos.empty()){
+								double dAstarRiskAware = this->computePathToObstacleMinDist(
+									this->astarPlanner_->getCurrPlan(), obstaclesPos, obstaclesSize);
+								double dAstarRiskFree = std::numeric_limits<double>::infinity();
+								if (this->astarPlanner_->getRiskFreePlan().size() >= 2){
+									dAstarRiskFree = this->computePathToObstacleMinDist(
+										this->astarPlanner_->getRiskFreePlan(), obstaclesPos, obstaclesSize);
+								}
+								double dRrt = std::numeric_limits<double>::infinity();
+								if (this->rrtPathVisMsg_.poses.size() >= 2){
+									dRrt = this->computePathToObstacleMinDist(
+										this->rrtPathVisMsg_, obstaclesPos, obstaclesSize);
+								}
+								cout << "[AutoFlight] 规划完成-路径到动态障碍物最近距离(m): "
+									<< "A*风险感知=" << std::fixed << std::setprecision(3) << dAstarRiskAware
+									<< ", A*普通=" << dAstarRiskFree
+									<< ", RRT=" << dRrt << endl;
 							}
 							Eigen::Vector3d startVel (0, 0, 0);
 							Eigen::Vector3d startAcc (0, 0, 0);
@@ -770,6 +800,38 @@ namespace AutoFlight{
 			}
 		}
 		return false;
+	}
+
+	double mpcNavigation::computePathToObstacleMinDist(const nav_msgs::Path& path,
+		const std::vector<Eigen::Vector3d>& obstaclesPos,
+		const std::vector<Eigen::Vector3d>& obstaclesSize) const{
+		std::vector<Eigen::Vector3d> pathVec;
+		for (const auto& p : path.poses){
+			pathVec.push_back(Eigen::Vector3d(p.pose.position.x, p.pose.position.y, p.pose.position.z));
+		}
+		return this->computePathToObstacleMinDist(pathVec, obstaclesPos, obstaclesSize);
+	}
+
+	double mpcNavigation::computePathToObstacleMinDist(const std::vector<Eigen::Vector3d>& path,
+		const std::vector<Eigen::Vector3d>& obstaclesPos,
+		const std::vector<Eigen::Vector3d>& obstaclesSize) const{
+		if (path.empty() or obstaclesPos.empty() or obstaclesSize.size() != obstaclesPos.size()){
+			return std::numeric_limits<double>::infinity();
+		}
+		double minDist = std::numeric_limits<double>::infinity();
+		for (const auto& pt : path){
+			for (size_t i = 0; i < obstaclesPos.size(); ++i){
+				const Eigen::Vector3d& c = obstaclesPos[i];
+				Eigen::Vector3d h = obstaclesSize[i] * 0.5;
+				Eigen::Vector3d nearest;
+				nearest(0) = std::max(c(0) - h(0), std::min(c(0) + h(0), pt(0)));
+				nearest(1) = std::max(c(1) - h(1), std::min(c(1) + h(1), pt(1)));
+				nearest(2) = std::max(c(2) - h(2), std::min(c(2) + h(2), pt(2)));
+				double d = (pt - nearest).norm();
+				if (d < minDist) minDist = d;
+			}
+		}
+		return minDist;
 	}
 
 	void mpcNavigation::getDynamicObstacles(std::vector<Eigen::Vector3d>& obstaclesPos, std::vector<Eigen::Vector3d>& obstaclesVel, std::vector<Eigen::Vector3d>& obstaclesSize, const Eigen::Vector3d &robotSize){
