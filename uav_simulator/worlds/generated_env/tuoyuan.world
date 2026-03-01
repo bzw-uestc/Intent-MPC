@@ -1,0 +1,255 @@
+<sdf version='1.7'>
+  <world name='default'>
+    <!-- 动态障碍物：参考 generated_env.world 的格式 -->
+    <!-- 障碍物1：从 (-1, 1) 到 (-7, 1) -->
+    <model name='dynamic_cylinder_0_0.6_0.6_1.7'>
+      <static>true</static>
+      <pose>-1 1 0.85 0 0 0</pose> <!-- X, Y, Z, Roll, Pitch, Yaw -->
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.3</radius>
+              <length>1.7</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient> <!-- Red color -->
+            <diffuse>1 0 0 1</diffuse> <!-- Red color -->
+            <specular>0.5 0.5 0.5 1</specular> <!-- Specular highlight -->
+          </material>
+        </visual>
+      </link>
+      <plugin name="obstacle_motion" filename="libobstaclePathPlugin.so">
+        <orientation>false</orientation>
+        <loop>1</loop>
+        <velocity>0.4</velocity>
+        <path>
+          <waypoint>-2 1 0.85</waypoint>
+          <waypoint>-2 1 0.85</waypoint>
+        </path>
+      </plugin>
+    </model> 
+    
+    <!-- 障碍物2：从 (-1, -2) 到 (-7, -2) -->
+    <model name='dynamic_cylinder_1_0.6_0.6_1.7'>
+      <static>true</static>
+      <pose>-1 -2 0.85 0 0 0</pose> <!-- X, Y, Z, Roll, Pitch, Yaw -->
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <cylinder>
+              <radius>0.3</radius>
+              <length>1.7</length>
+            </cylinder>
+          </geometry>
+          <material>
+            <ambient>1 0 0 1</ambient> <!-- Red color -->
+            <diffuse>1 0 0 1</diffuse> <!-- Red color -->
+            <specular>0.5 0.5 0.5 1</specular> <!-- Specular highlight -->
+          </material>
+        </visual>
+      </link>
+      <plugin name="obstacle_motion" filename="libobstaclePathPlugin.so">
+        <orientation>false</orientation>
+        <loop>1</loop>
+        <velocity>0.4</velocity>
+        <path>
+          <waypoint>-2 -1 0.85</waypoint>
+          <waypoint>-2 -1 0.85</waypoint>
+        </path>
+      </plugin>
+    </model> 
+    
+
+
+
+    <!-- 静态长方体障碍物1 -->
+    <model name='static_box_0'>
+      <static>true</static>
+      <pose>-1.0 3.0 1.0 0 0 0</pose> <!-- X, Y, Z(height/2), Roll, Pitch, Yaw -->
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size> <!-- width, depth, height -->
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient> <!-- Gray color -->
+            <diffuse>0.5 0.5 0.5 1</diffuse> <!-- Gray color -->
+            <specular>0.3 0.3 0.3 1</specular> <!-- Specular highlight -->
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 静态长方体障碍物2 -->
+    <model name='static_box_1'>
+      <static>true</static>
+      <pose>-1.0 -3.5 1.0 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 静态长方体障碍物3 -->
+    <model name='static_box_2'>
+      <static>true</static>
+      <pose>-5.0 2.5 1.0 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 静态长方体障碍物4 -->
+    <model name='static_box_3'>
+      <static>true</static>
+      <pose>-7.0 -3.2 1.0 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>1.0 1.0 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <!-- 静态长方体障碍物5 -->
+    <model name='static_box_4'>
+      <static>true</static>
+      <pose>1.45 -1.25 1.0 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <geometry>
+            <box>
+              <size>1.0 1.2 2.0</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+            <specular>0.3 0.3 0.3 1</specular>
+          </material>
+        </visual>
+        <collision name='collision'>
+          <geometry>
+            <box>
+              <size>0.5 0.7 2.0</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 10 0 -0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+      <spot>
+        <inner_angle>0</inner_angle>
+        <outer_angle>0</outer_angle>
+        <falloff>0</falloff>
+      </spot>
+    </light>
+
+    <model name='ground_plane'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <physics type='ode'>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>1</shadows>
+    </scene>
+
+    <gui fullscreen='0'>
+      <camera name='user_camera'>
+        <pose>6.39292 -16.0551 24.6198 0 0.913797 2.1162</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+  </world>
+</sdf>

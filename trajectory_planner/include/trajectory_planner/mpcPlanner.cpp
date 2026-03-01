@@ -1422,6 +1422,29 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 		    visualization_msgs::MarkerArray lines;
 			int obIdx = 0;
 			for (int i = 0; i<this->dynamicObstaclesPos_.size();i++){
+				// MPC避障约束椭球可视化 (半轴 = size/2 + dynamicSafetyDist，与约束一致)
+				visualization_msgs::Marker ellipsoid;
+				ellipsoid.header.frame_id = "map";
+				ellipsoid.type = visualization_msgs::Marker::SPHERE;
+				ellipsoid.action = visualization_msgs::Marker::ADD;
+				ellipsoid.ns = "mpc_constraint_ellipsoid";
+				ellipsoid.id = obIdx;
+				ellipsoid.pose.position.x = this->dynamicObstaclesPos_[i][0](0);
+				ellipsoid.pose.position.y = this->dynamicObstaclesPos_[i][0](1);
+				ellipsoid.pose.position.z = this->dynamicObstaclesPos_[i][0](2);
+				ellipsoid.pose.orientation.w = 1.0;
+				// 约束椭球半轴 = size/2 + dynamicSafetyDist，scale为直径
+				ellipsoid.scale.x = this->dynamicObstaclesSize_[i][0](0) + 2.0 * this->dynamicSafetyDist_;
+				ellipsoid.scale.y = this->dynamicObstaclesSize_[i][0](1) + 2.0 * this->dynamicSafetyDist_;
+				ellipsoid.scale.z = this->dynamicObstaclesSize_[i][0](2) + 2.0 * this->dynamicSafetyDist_;
+				ellipsoid.color.r = 1.0;
+				ellipsoid.color.g = 0.5;
+				ellipsoid.color.b = 0.0;
+				ellipsoid.color.a = 0.35;
+				ellipsoid.lifetime = ros::Duration(0.1);
+				lines.markers.push_back(ellipsoid);
+
+				// 边框线框
 				visualization_msgs::Marker line;
 				line.header.frame_id = "map";
 				line.type = visualization_msgs::Marker::LINE_LIST;

@@ -1,6 +1,6 @@
 rrt/map_resolution: 0.1
 rrt/timeout: 0.5
-rrt/vis_path: true   # true: also run RRT and publish to mpcNavigation/rrt_path_vis for visualization (alongside A*)
+rrt/vis_path: false   # true: also run RRT and publish to mpcNavigation/rrt_path_vis for visualization (alongside A*)
 
 # A* specific timeout (risk computation is expensive, needs longer than RRT)
 astar/timeout: 0.5
@@ -8,7 +8,7 @@ astar/timeout: 0.5
 # Risk-aware A* parameters (paper: Risk-Aware Planner for Quadrotor in Cluttered and Dynamic Environments)
 # Lower values = shorter paths; higher = more conservative (may cause large detours)
 astar/risk_aware: true
-astar/dual_path_search: true   # true: search both risk-aware and risk-free paths, publish to astar/risk_aware_path and astar/risk_free_path for visualization
+astar/dual_path_search: false   # true: search both risk-aware and risk-free paths, publish to astar/risk_aware_path and astar/risk_free_path for visualization
 astar/risk_map_vis: true       # true: publish 2D risk map (XY slice) to astar/risk_map for RViz
 astar/risk_map_res: 0.15       # sampling resolution (m)
 astar/risk_map_range: 5.0      # half side of XY region around start-goal center (m)

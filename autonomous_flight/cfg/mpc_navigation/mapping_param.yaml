@@ -48,4 +48,5 @@ visualize_global_map: true
 verbose: false
 
 # prebuilt_map_directory: "No"
-prebuilt_map_directory: "/cfg/saved_map/aStar.pcd"
+# prebuilt_map_directory: "/cfg/saved_map/aStar.pcd"
+prebuilt_map_directory: "/cfg/saved_map/tuoyuan.pcd"
