@@ -51,8 +51,10 @@ poly_traj/use_pwl_failsafe: true
 mpc_planner/horizon: 30
 mpc_planner/z_range_min: 0.6 
 mpc_planner/z_range_max: 2.9 
-mpc_planner/static_safety_dist: 0.8
-mpc_planner/dynamic_safety_dist: 0.6
+mpc_planner/static_safety_dist: 1.2
+mpc_planner/dynamic_safety_dist: 1.0
+mpc_planner/ellipsoid_vis_alpha: 0.25  # 椭球线框透明度 0~1，越小越透明
+mpc_planner/ellipsoid_vis_scale: 0.02  # 椭球线框粗细 (m)，越小越细
 mpc_planner/static_constraint_slack_ratio: 0.01
 mpc_planner/dynamic_constraint_slack_ratio: 0.2 
 # MPC clustering params

@@ -5,6 +5,8 @@
 */
 
 #include <trajectory_planner/mpcPlanner.h>
+#include <algorithm>
+#include <cmath>
 
 namespace trajPlanner{
 	mpcPlanner::mpcPlanner(const ros::NodeHandle& nh) : nh_(nh){
@@ -123,6 +125,20 @@ namespace trajPlanner{
 		else{
 			cout << this->hint_ << ": Dynamic slack variable is set to: " << this->dynamicSlack_ << endl;
 		}
+
+		// 椭球线框透明度 (0~1，越小越透明)
+		if (not this->nh_.getParam("/mpc_planner/ellipsoid_vis_alpha", this->ellipsoidVisAlpha_)
+		    and not this->nh_.getParam(this->ns_ + "/ellipsoid_vis_alpha", this->ellipsoidVisAlpha_)){
+			this->ellipsoidVisAlpha_ = 0.4;
+		}
+		this->ellipsoidVisAlpha_ = std::max(0.0, std::min(1.0, this->ellipsoidVisAlpha_));
+		cout << this->hint_ << ": Ellipsoid vis alpha (dynamic obs): " << this->ellipsoidVisAlpha_ << endl;
+
+		if (not this->nh_.getParam("/mpc_planner/ellipsoid_vis_scale", this->ellipsoidVisScale_)
+		    and not this->nh_.getParam(this->ns_ + "/ellipsoid_vis_scale", this->ellipsoidVisScale_)){
+			this->ellipsoidVisScale_ = 0.02;
+		}
+		this->ellipsoidVisScale_ = std::max(0.005, std::min(0.1, this->ellipsoidVisScale_));
 
 	}
 
@@ -373,6 +389,17 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 	// std::vector<staticObstacle> staticObstacles;
 	updateObstacleParam(staticObstacles, dynamicObstaclesPos, dynamicObstaclesSize, numObs, mpcWindow, oxyz, osize, yaw, isDynamic);
 
+	// 校验障碍物矩阵维度，防止越界
+	if (static_cast<int>(oxyz.size()) != mpcWindow or static_cast<int>(osize.size()) != mpcWindow or static_cast<int>(yaw.size()) != mpcWindow){
+		return 0;
+	}
+	for (int k = 0; k < mpcWindow; k++){
+		if (oxyz[k].rows() != numObs or osize[k].rows() != numObs or yaw[k].rows() != numObs
+			or k >= static_cast<int>(isDynamic.size()) or static_cast<int>(isDynamic[k].size()) != numObs){
+			return 0;
+		}
+	}
+
     // set MPC problem quantities
     setDynamicsMatrices(a, b);
     setInequalityConstraints(xMax, xMin, uMax, uMin);
@@ -468,6 +495,12 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 			control = QPSolution.block(numStates*(mpcWindow+1)+numControls*i, 0, numControls, 1);
 			controlsSol.push_back(control);
 		}
+	// 保存MPC生成轨迹时产生的约束椭球参数，供可视化使用（仅动态障碍物）
+	this->mpcEllipsoidOxyz_ = oxyz;
+	this->mpcEllipsoidOsize_ = osize;
+	this->mpcEllipsoidYaw_ = yaw;
+	this->mpcEllipsoidNumObs_ = numObs;
+	this->mpcEllipsoidNumDynamicObs_ = static_cast<int>(dynamicObstaclesPos.size());
 
 	// this->firstTime_ = false;
     return 1;
@@ -950,7 +983,7 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 
 		for (int i = 0; i < mpcWindow; i++){
 			double cx, cy, cz;
-			if (this->currentStatesSol_.size()!=0){
+			if (this->currentStatesSol_.size()!=0 and i < static_cast<int>(this->currentStatesSol_.size())){
 				cx = this->currentStatesSol_[i](0);
 				cy = this->currentStatesSol_[i](1);
 				cz = this->currentStatesSol_[i](2);
@@ -1029,7 +1062,7 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 			// Zero(numObs * mpcWindow, 1);
 		for (int i = 0; i < mpcWindow; i++){
 			double cx, cy, cz;
-			if (this->currentStatesSol_.size()!=0){
+			if (this->currentStatesSol_.size() != 0 and i < static_cast<int>(this->currentStatesSol_.size())){
 				cx = this->currentStatesSol_[i](0);
 				cy = this->currentStatesSol_[i](1);
 				cz = this->currentStatesSol_[i](2);
@@ -1418,32 +1451,11 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 	}
 
 	void mpcPlanner::publishDynamicObstacles(){
-		if (this->dynamicObstaclesPos_.size() != 0){
-		    visualization_msgs::MarkerArray lines;
+		visualization_msgs::MarkerArray lines;
+		if (this->dynamicObstaclesPos_.size() != 0 and this->dynamicObstaclesPos_.size() == this->dynamicObstaclesSize_.size()){
 			int obIdx = 0;
-			for (int i = 0; i<this->dynamicObstaclesPos_.size();i++){
-				// MPC避障约束椭球可视化 (半轴 = size/2 + dynamicSafetyDist，与约束一致)
-				visualization_msgs::Marker ellipsoid;
-				ellipsoid.header.frame_id = "map";
-				ellipsoid.type = visualization_msgs::Marker::SPHERE;
-				ellipsoid.action = visualization_msgs::Marker::ADD;
-				ellipsoid.ns = "mpc_constraint_ellipsoid";
-				ellipsoid.id = obIdx;
-				ellipsoid.pose.position.x = this->dynamicObstaclesPos_[i][0](0);
-				ellipsoid.pose.position.y = this->dynamicObstaclesPos_[i][0](1);
-				ellipsoid.pose.position.z = this->dynamicObstaclesPos_[i][0](2);
-				ellipsoid.pose.orientation.w = 1.0;
-				// 约束椭球半轴 = size/2 + dynamicSafetyDist，scale为直径
-				ellipsoid.scale.x = this->dynamicObstaclesSize_[i][0](0) + 2.0 * this->dynamicSafetyDist_;
-				ellipsoid.scale.y = this->dynamicObstaclesSize_[i][0](1) + 2.0 * this->dynamicSafetyDist_;
-				ellipsoid.scale.z = this->dynamicObstaclesSize_[i][0](2) + 2.0 * this->dynamicSafetyDist_;
-				ellipsoid.color.r = 1.0;
-				ellipsoid.color.g = 0.5;
-				ellipsoid.color.b = 0.0;
-				ellipsoid.color.a = 0.35;
-				ellipsoid.lifetime = ros::Duration(0.1);
-				lines.markers.push_back(ellipsoid);
-
+			for (int i = 0; i < static_cast<int>(this->dynamicObstaclesPos_.size()); i++){
+				if (this->dynamicObstaclesPos_[i].empty() or this->dynamicObstaclesSize_[i].empty()) continue;
 				// 边框线框
 				visualization_msgs::Marker line;
 				line.header.frame_id = "map";
@@ -1453,7 +1465,7 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 				line.scale.x = 0.06;
 				line.lifetime = ros::Duration(0.1);
 				line.id = obIdx;
-				// 动态障碍物统一显示为蓝色
+				// 动态障碍物蓝色长方体不透明
 				line.color.r = 0;
 				line.color.g = 0;
 				line.color.b = 1;
@@ -1524,7 +1536,106 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 				
 				obIdx++;
 			}
-		    this->dynamicObstacleVisPub_.publish(lines);	
-		}	
+		}
+		// 添加MPC生成轨迹时产生的约束椭球 (橙色线框，非实心)
+		if (not this->mpcEllipsoidOxyz_.empty() and not this->mpcEllipsoidOsize_.empty() and not this->mpcEllipsoidYaw_.empty()){
+			int markerId = 0;
+			size_t numSteps = this->mpcEllipsoidOxyz_.size();
+			for (size_t j = 0; j < numSteps; ++j){
+				if (j >= this->mpcEllipsoidOsize_.size() or j >= this->mpcEllipsoidYaw_.size()) break;
+				int rowsOxyz = this->mpcEllipsoidOxyz_[j].rows();
+				int rowsOsize = this->mpcEllipsoidOsize_[j].rows();
+				int rowsYaw = this->mpcEllipsoidYaw_[j].rows();
+				int numObs = std::min({rowsOxyz, rowsOsize, rowsYaw, this->mpcEllipsoidNumObs_, this->mpcEllipsoidNumDynamicObs_});
+				if (numObs <= 0) continue;
+				for (int i = 0; i < numObs; ++i){  // 仅显示动态障碍物椭球，静态不显示
+					Eigen::Vector3d pos(this->mpcEllipsoidOxyz_[j](i, 0), this->mpcEllipsoidOxyz_[j](i, 1), this->mpcEllipsoidOxyz_[j](i, 2));
+					double a = this->mpcEllipsoidOsize_[j](i, 0);
+					double b = this->mpcEllipsoidOsize_[j](i, 1);
+					double c = this->mpcEllipsoidOsize_[j](i, 2);
+					double y = this->mpcEllipsoidYaw_[j](i, 0);
+					visualization_msgs::Marker m = this->createEllipsoidWireframe(markerId++, pos, a, b, c, y);
+					if (m.points.size() >= 4){
+						lines.markers.push_back(m);
+					}
+				}
+			}
+		}
+		if (not lines.markers.empty()){
+			this->dynamicObstacleVisPub_.publish(lines);
+		}
 	}
+
+	visualization_msgs::Marker mpcPlanner::createEllipsoidWireframe(int markerId, const Eigen::Vector3d& pos,
+		double a, double b, double c, double yaw){
+		visualization_msgs::Marker ellipsoid;
+		ellipsoid.header.frame_id = "map";
+		ellipsoid.header.stamp = ros::Time::now();
+		ellipsoid.ns = "mpc_constraint_ellipsoid";
+		ellipsoid.id = markerId;
+		ellipsoid.type = visualization_msgs::Marker::LINE_LIST;
+		ellipsoid.action = visualization_msgs::Marker::ADD;
+		ellipsoid.scale.x = this->ellipsoidVisScale_;
+		ellipsoid.color.r = 1.0;
+		ellipsoid.color.g = 0.5;
+		ellipsoid.color.b = 0.0;
+		ellipsoid.color.a = this->ellipsoidVisAlpha_;
+		ellipsoid.lifetime = ros::Duration(0.1);
+		// 纬线圈（水平椭圆）
+		int numLatCircles = 6;
+		for (int i = 1; i < numLatCircles; ++i){
+			double theta = M_PI * i / numLatCircles;
+			double r_x = a * std::sin(theta);
+			double r_y = b * std::sin(theta);
+			double z_val = c * std::cos(theta);
+			int numPoints = 32;
+			std::vector<geometry_msgs::Point> circlePoints;
+			for (int j = 0; j <= numPoints; ++j){
+				double phi = 2.0 * M_PI * j / numPoints;
+				double x_local = r_x * std::cos(phi);
+				double y_local = r_y * std::sin(phi);
+				double x_rot = x_local * std::cos(yaw) - y_local * std::sin(yaw);
+				double y_rot = x_local * std::sin(yaw) + y_local * std::cos(yaw);
+				geometry_msgs::Point p;
+				p.x = pos(0) + x_rot;
+				p.y = pos(1) + y_rot;
+				p.z = pos(2) + z_val;
+				circlePoints.push_back(p);
+			}
+			for (size_t j = 0; j < circlePoints.size() - 1; ++j){
+				ellipsoid.points.push_back(circlePoints[j]);
+				ellipsoid.points.push_back(circlePoints[j + 1]);
+			}
+			if (circlePoints.size() > 1){
+				ellipsoid.points.push_back(circlePoints.back());
+				ellipsoid.points.push_back(circlePoints.front());
+			}
+		}
+		// 经线圈（垂直椭圆）
+		int numLonCircles = 8;
+		for (int i = 0; i < numLonCircles; ++i){
+			double phi = 2.0 * M_PI * i / numLonCircles;
+			int numPoints = 32;
+			std::vector<geometry_msgs::Point> circlePoints;
+			for (int j = 0; j <= numPoints; ++j){
+				double theta = M_PI * j / numPoints;
+				double x_local = a * std::sin(theta) * std::cos(phi);
+				double y_local = b * std::sin(theta) * std::sin(phi);
+				double z_local = c * std::cos(theta);
+				double x_rot = x_local * std::cos(yaw) - y_local * std::sin(yaw);
+				double y_rot = x_local * std::sin(yaw) + y_local * std::cos(yaw);
+				geometry_msgs::Point p;
+				p.x = pos(0) + x_rot;
+				p.y = pos(1) + y_rot;
+				p.z = pos(2) + z_local;
+				circlePoints.push_back(p);
+			}
+			for (size_t j = 0; j < circlePoints.size() - 1; ++j){
+				ellipsoid.points.push_back(circlePoints[j]);
+				ellipsoid.points.push_back(circlePoints[j + 1]);
+			}
+		}
+		return ellipsoid;
+	}
+
 }

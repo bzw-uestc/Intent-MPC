@@ -1,7 +1,7 @@
 simulation: true
 use_fake_detector: true
 
-# 仅规划模式：为 true 时只运行规划算法，不发送控制指令，无人机保持不动
+# 仅规划模式：为 true 时起飞后悬停，只运行规划算法，不执行轨迹运动
 planning_only: true
 use_predictor: true
 takeoff_height: 1.0 # m

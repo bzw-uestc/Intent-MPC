@@ -22,7 +22,7 @@ namespace AutoFlight{
 			cout << "[AutoFlight]: No planning_only param found. Use default: false." << endl;
 		}
 		else{
-			cout << "[AutoFlight]: Planning only mode is set to: " << this->planning_only_ << " (drone will not move when true)." << endl;
+			cout << "[AutoFlight]: Planning only mode is set to: " << this->planning_only_ << " (drone will take off and hover, but not follow trajectory when true)." << endl;
 		}
 
     	// use simulation detector	
@@ -697,12 +697,10 @@ namespace AutoFlight{
 	}
 
 	void mpcNavigation::run(){
-		// take off the drone (skip when planning_only mode)
-		if (not this->planning_only_){
-			this->takeoff();
-		}
-		else{
-			cout << "[AutoFlight]: Planning only mode - skipping takeoff, drone will stay still." << endl;
+		// take off the drone (planning_only 模式下也起飞，但不执行后续轨迹运动)
+		this->takeoff();
+		if (this->planning_only_){
+			cout << "[AutoFlight]: Planning only mode - drone will hover after takeoff, no trajectory execution." << endl;
 		}
 
 		// register timer callback

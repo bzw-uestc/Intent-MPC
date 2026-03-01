@@ -74,7 +74,12 @@ namespace trajPlanner{
 		std::vector<Eigen::VectorXd> obIntentProb_;
 		std::vector<double> trajWeightedScore_;
 		std::vector<Eigen::Vector3d> trajScore_;
-
+		// MPC生成轨迹时产生的约束椭球参数 (oxyz, osize, yaw)
+		std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> mpcEllipsoidOxyz_;
+		std::vector<Eigen::Matrix<double, Eigen::Dynamic, 3>> mpcEllipsoidOsize_;
+		std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> mpcEllipsoidYaw_;
+		int mpcEllipsoidNumObs_ = 0;
+		int mpcEllipsoidNumDynamicObs_ = 0;  // 仅显示动态障碍物椭球，静态不显示
 
 		// parameters
 		int horizon_;
@@ -86,6 +91,9 @@ namespace trajPlanner{
 		double staticSafetyDist_;
 		double staticSlack_;
 		double dynamicSlack_;
+
+		double ellipsoidVisAlpha_ = 0.4;   // 椭球线框透明度 0~1，越小越透明
+		double ellipsoidVisScale_ = 0.02;  // 椭球线框粗细 (m)，越小越细
 
 		// clustering params
 		double cloudRes_;
@@ -172,6 +180,8 @@ namespace trajPlanner{
 		void publishLocalCloud();
 		void publishStaticObstacles();
 		void publishDynamicObstacles();
+		visualization_msgs::Marker createEllipsoidWireframe(int markerId, const Eigen::Vector3d& pos,
+			double a, double b, double c, double yaw);
 	};
 }
 #endif

@@ -53,13 +53,13 @@ Visualization Manager:
       Value: true
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 1
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -141,8 +141,8 @@ Visualization Manager:
       Marker Topic: /mpc_planner/dynamic_obstacles
       Name: Dynamic Obstacles
       Namespaces:
-        mpc_dynamic_obstacles: true
         mpc_constraint_ellipsoid: true
+        mpc_dynamic_obstacles: true
       Queue Size: 100
       Value: true
     - Alpha: 0.800000011920929
@@ -414,7 +414,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.720694541931152
+      Distance: 8.945915222167969
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -422,17 +422,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -2.0923404693603516
-        Y: -0.3989611268043518
-        Z: 4.902937889099121
+        X: -0.6991695165634155
+        Y: -0.4208802580833435
+        Z: 2.0440545082092285
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5447955131530762
+      Pitch: 0.444797158241272
       Target Frame: <Fixed Frame>
-      Yaw: 6.264893054962158
+      Yaw: 0.03170494735240936
     Saved: ~
 Window Geometry:
   Displays:
@@ -450,5 +450,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2548
-  X: 0
-  Y: 0
+  X: -32
+  Y: -32
