@@ -94,8 +94,9 @@ namespace trajPlanner{
 
 		double ellipsoidVisAlpha_ = 0.4;   // 椭球线框透明度 0~1，越小越透明
 		double ellipsoidVisScale_ = 0.02;  // 椭球线框粗细 (m)，越小越细
-		double ellipsoidElongationX_ = 1.3;  // 动态障碍物沿x轴长轴拉长（朝x运动），作用到规划
-		double ellipsoidShrinkYZ_ = 0.85;    // 动态障碍物y/z短轴缩短，作用到规划
+		double ellipsoidElongationX_ = 1.3;  // 沿速度方向长轴拉长因子，作用到规划
+		double ellipsoidShrinkYZ_ = 0.85;    // 垂直于速度方向的短轴缩短因子，作用到规划
+		double ellipsoidVelYaw_ = 0.0;      // 速度方向对应的yaw角 (atan2(vy,vx))，长轴沿此方向
 
 		// clustering params
 		double cloudRes_;
