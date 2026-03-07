@@ -149,6 +149,15 @@ namespace trajPlanner{
 			this->ellipsoidShrinkYZ_ = 0.85;
 		}
 
+		// 动态障碍物速度方向 [vx, vy, vz]，长轴沿此方向，用于计算 yaw=atan2(vy,vx)
+		std::vector<double> velDir;
+		if (this->nh_.getParam("/mpc_planner/ellipsoid_velocity_dir", velDir) or this->nh_.getParam(this->ns_ + "/ellipsoid_velocity_dir", velDir)){
+			if (velDir.size() >= 2 and (std::abs(velDir[0]) > 1e-6 or std::abs(velDir[1]) > 1e-6)){
+				this->ellipsoidVelYaw_ = std::atan2(velDir[1], velDir[0]);
+			}
+		}
+		// 兼容旧参数：若只有 elongation_x 无 velocity_dir，默认沿 x 轴 (yaw=0)
+
 	}
 
 	void mpcPlanner::initModules(){
@@ -1132,11 +1141,11 @@ bool mpcPlanner::solveTraj(const std::vector<staticObstacle> &staticObstacles, c
 					baseY = dynamicObstaclesSize[i].back()(1)/2 + this->dynamicSafetyDist_;
 					baseZ = dynamicObstaclesSize[i].back()(2)/2 + this->dynamicSafetyDist_;
 				}
-				// 动态障碍物朝x轴运动：x方向长轴拉长，y/z短轴缩短，作用到规划约束
+				// 动态障碍物沿速度方向：长轴拉长，短轴缩短，yaw 使长轴对准速度方向
 				osize[j](i,0) = baseX * this->ellipsoidElongationX_;
 				osize[j](i,1) = baseY * this->ellipsoidShrinkYZ_;
 				osize[j](i,2) = baseZ * this->ellipsoidShrinkYZ_;
-				yaw[j](i,0) = 0.0;
+				yaw[j](i,0) = this->ellipsoidVelYaw_;
 				isDyamic[j][i] = 1;
 			}
 			for(int i=0; i<numStaticOb; i++){
