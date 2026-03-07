@@ -51,6 +51,7 @@ namespace onboardDetector{
 		// visualization:
 		nav_msgs::Odometry odom_;
 		double colorDistance_;
+		Eigen::Vector3d visRobotSize_;
 		visualization_msgs::MarkerArray visMsg_;
 
 	public:

@@ -48,8 +48,18 @@ namespace onboardDetector{
         }
         else{
             std::cout << "[Fake Detector]: The history for tracking is set to: " << this->histSize_ << std::endl;
-        }  
+        }
 
+		// robot size for GT bbox inflation (match dynamic_obstacles)
+		std::vector<double> robotSizeVec(3);
+		if (this->nh_.getParam("dynamic_map/robot_size", robotSizeVec) or this->nh_.getParam("robot_size", robotSizeVec)){
+			this->visRobotSize_(0) = robotSizeVec[0];
+			this->visRobotSize_(1) = robotSizeVec[1];
+			this->visRobotSize_(2) = robotSizeVec[2];
+		}
+		else{
+			this->visRobotSize_ = Eigen::Vector3d(0.2, 0.2, 0.1);
+		}
 
 		this->firstTime_ = true;
 		if (this->useMocap_){
@@ -338,19 +348,22 @@ namespace onboardDetector{
 		std::vector<visualization_msgs::Marker> bboxVec;
 		int obIdx = 0;
 		for (const onboardDetector:: box3D& obstacle : this->obstacleMsg_){
+			double x_width = obstacle.x_width + this->visRobotSize_(0);
+			double y_width = obstacle.y_width + this->visRobotSize_(1);
+			double z_width = obstacle.z_width + this->visRobotSize_(2);
 
-			// 12 lines for each obstacle
+			// 12 lines for each obstacle (inflated bbox, same as dynamic_obstacles)
 			geometry_msgs::Point p1, p2, p3, p4, p5, p6, p7, p8;
 			// upper four points
-			p1.x = obstacle.x+obstacle.x_width/2; p1.y = obstacle.y+obstacle.y_width/2; p1.z = obstacle.z+obstacle.z_width/2;
-			p2.x = obstacle.x-obstacle.x_width/2; p2.y = obstacle.y+obstacle.y_width/2; p2.z = obstacle.z+obstacle.z_width/2;
-			p3.x = obstacle.x+obstacle.x_width/2; p3.y = obstacle.y-obstacle.y_width/2; p3.z = obstacle.z+obstacle.z_width/2;
-			p4.x = obstacle.x-obstacle.x_width/2; p4.y = obstacle.y-obstacle.y_width/2; p4.z = obstacle.z+obstacle.z_width/2;
+			p1.x = obstacle.x+x_width/2; p1.y = obstacle.y+y_width/2; p1.z = obstacle.z+z_width/2;
+			p2.x = obstacle.x-x_width/2; p2.y = obstacle.y+y_width/2; p2.z = obstacle.z+z_width/2;
+			p3.x = obstacle.x+x_width/2; p3.y = obstacle.y-y_width/2; p3.z = obstacle.z+z_width/2;
+			p4.x = obstacle.x-x_width/2; p4.y = obstacle.y-y_width/2; p4.z = obstacle.z+z_width/2;
 
-			p5.x = obstacle.x+obstacle.x_width/2; p5.y = obstacle.y+obstacle.y_width/2; p5.z = obstacle.z-obstacle.z_width/2;
-			p6.x = obstacle.x-obstacle.x_width/2; p6.y = obstacle.y+obstacle.y_width/2; p6.z = obstacle.z-obstacle.z_width/2;
-			p7.x = obstacle.x+obstacle.x_width/2; p7.y = obstacle.y-obstacle.y_width/2; p7.z = obstacle.z-obstacle.z_width/2;
-			p8.x = obstacle.x-obstacle.x_width/2; p8.y = obstacle.y-obstacle.y_width/2; p8.z = obstacle.z-obstacle.z_width/2;
+			p5.x = obstacle.x+x_width/2; p5.y = obstacle.y+y_width/2; p5.z = obstacle.z-z_width/2;
+			p6.x = obstacle.x-x_width/2; p6.y = obstacle.y+y_width/2; p6.z = obstacle.z-z_width/2;
+			p7.x = obstacle.x+x_width/2; p7.y = obstacle.y-y_width/2; p7.z = obstacle.z-z_width/2;
+			p8.x = obstacle.x-x_width/2; p8.y = obstacle.y-y_width/2; p8.z = obstacle.z-z_width/2;
 
 			std::vector<geometry_msgs::Point> line1Vec {p1, p2};
 			std::vector<geometry_msgs::Point> line2Vec {p1, p3};
@@ -391,20 +404,11 @@ namespace onboardDetector{
 				line.id = count;
 				line.type = visualization_msgs::Marker::LINE_LIST;
 				line.lifetime = ros::Duration(0.5);
-				line.scale.x = 0.05;
-				line.scale.y = 0.05;
-				line.scale.z = 0.05;
+				line.scale.x = 0.06;
 				line.color.a = 1.0;
-				if (this->isObstacleInSensorRange(obstacle, PI_const)){
-					line.color.r = 1;
-					line.color.g = 0;
-					line.color.b = 0;
-				}
-				else{
-					line.color.r = 0;
-					line.color.g = 1;
-					line.color.b = 0;
-				}
+				line.color.r = 0;
+				line.color.g = 0;
+				line.color.b = 1;
 				++count;
 				bboxVec.push_back(line);
 			}
